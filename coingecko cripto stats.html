@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>coin</title>
+    <style>
+        @import url("https://fonts.googleapis.com/css?family=Orbitron");
+
+        html {
+            box-sizing: border-box;
+        }
+
+        *,
+        *::after,
+        *::before {
+            box-sizing: inherit;
+        }
+
+        *,
+        *:before,
+        *:after {
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        body {
+            margin: 0;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            /*            height: 100vh;*/
+            background-color: black;
+            font-family: "Orbitron", sans-serif;
+        }
+
+        .panel {
+            width: 100%;
+            height: 50%;
+            background-color: #999;
+        }
+
+        .tbl-ticker {
+            width: 100%;
+            height: 100%;
+            color: white;
+            margin: 0 auto;
+            border-spacing: 0;
+            border-collapse: collapse;
+            border-right: 3px solid transparent;
+        }
+
+        .tbl-ticker>tbody>tr>td:first-child {
+            text-align: center;
+            font-size: 2.5em;
+            width: 200px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-right: 3px transparent solid;
+            border-left: 3px transparent solid;
+        }
+
+        .tbl-ticker>tbody>tr>td:nth-child(2) {
+            text-align: center;
+            font-size: 2.5em;
+            width: 120px;
+        }
+
+        .box {
+            width: 100%;
+            text-align: right;
+            padding: 20px 100px 0 20px;
+            font-size: 2.5em;
+        }
+
+        .box span {
+            position: relative;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.9);
+            line-height: 1.75;
+        }
+
+        .percent-change {
+            width: 100%;
+            text-align: right;
+            padding-right: 100px;
+            padding-bottom: 20px;
+            font-size: 1.5em;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.9);
+        }
+
+        .price-up {
+            background-color: #008000;
+        }
+
+        .price-down {
+            background-color: #cc0000;
+        }
+
+        .dir-up,
+        .dir-down {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <p><a href="https://www.coingecko.com/en/api" target="_blank">Powered by CoinGecko API</a></p>
+
+    <div class="crypto-ticker"></div>
+
+    <script>
+        /**
+     * BTC - bitcoin
+     * ETH - ethereum
+     * XLM - stellar
+     * XMR - monero
+     * ZEC - zcash
+     */
+
+        var cryptoCurrencies = ["bitcoin", "ethereum", "stellar", "monero", "zcash"];
+
+        var cryptoTicker = document.querySelector(".crypto-ticker");
+
+        fetchCryptosCurrencies();
+
+        var top100 = [];
+
+        function fetchCryptosCurrencies() {
+            var api = "https://api.coingecko.com/api/v3/coins/";
+            var uris = cryptoCurrencies.map((c) => api + c + "?localization=false");
+
+            Promise.all(
+                uris.map((url) =>
+                    fetch(url)
+                        .then(checkStatus) // check the response of our APIs
+                        .then(parseJSON) // parse it to Json
+                        .catch((error) => console.log("There was a problem!", error))
+                )
+            )
+                .then((data) => top100.push(...data))
+                .then(displauCryptoCurrencies)
+                .then(updateTrend);
+        }
+
+        function checkStatus(response) {
+            if (response.ok) {
+                return Promise.resolve(response);
+            } else {
+                return Promise.reject(new Error(response.statusText));
+            }
+        }
+
+        function parseJSON(response) {
+            return response.json();
+        }
+
+        function displauCryptoCurrencies() {
+            const html = top100
+                // .filter(coin => cryptoCurrencies.includes(coin.id))
+                .map((coin) => {
+                    const id = coin.id;
+                    const name = coin.name;
+                    const symbol = coin.symbol;
+                    const rank = coin.rank;
+                    // const price_usd = coin.price_usd;
+                    const price_usd = coin.market_data.current_price.usd;
+                    const price_btc = coin.price_btc;
+                    const twentyfourh_volume_usd = coin["24h_volume_usd"];
+                    const market_cap_usd = coin.market_cap_usd;
+                    const available_supply = coin.available_supply;
+                    const total_supply = coin.total_supply;
+                    const max_supply = coin.max_supply;
+                    // const percent_change_1h = coin.percent_change_1h;
+                    const percent_change_1h =
+                        coin.market_data.price_change_percentage_1h_in_currency.usd;
+                    const percent_change_24h = coin.percent_change_24h;
+                    const percent_change_7d = coin.percent_change_7d;
+                    const last_updated = coin.last_updated;
+                    return `
+                    <div class="${id}-panel panel">
+                        <table class="tbl-ticker">
+                            <tr>
+                                <td><img src="https://www.xriva.xyz/crypto-icons/${symbol.toLowerCase()}.png" alt="${name}"> <span>${symbol.toUpperCase()}</span>
+                                </td>
+                                <td>
+                                    <i class="fa fa-caret-up dir-up"></i>
+                                    <i class="fa fa-caret-down dir-down"></i>
+                                </td>
+                                <td>
+                                    <div class="box">
+                                        <span class="price" data-percent-change-last-hour="${percent_change_1h}">$ ${price_usd}</span>
+                                    </div>
+                                    <div class="percent-change">
+                                        ${parseFloat(percent_change_1h).toFixed(2)}%
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    `;
+                })
+                .join("");
+            cryptoTicker.innerHTML = html;
+        }
+
+        function updateTrend() {
+            var ticker = document.querySelector(".crypto-ticker");
+            var panel = ticker.querySelectorAll(".panel");
+            var html = Array.prototype.map.call(panel, function (panel) {
+                var percentChange1h = panel.querySelector(".price").dataset
+                    .percentChangeLastHour;
+                var trendUp = panel.querySelector(".dir-up");
+                var trendDown = panel.querySelector(".dir-down");
+                if (percentChange1h < 0) {
+                    panel.classList.add("price-down");
+                    panel.classList.remove("price-up");
+                    trendDown.style.display = "block";
+                    trendUp.style.display = "none";
+                } else if (percentChange1h > 0) {
+                    panel.classList.add("price-up");
+                    panel.classList.remove("price-down");
+                    trendDown.style.display = "none";
+                    trendUp.style.display = "block";
+                }
+                return html;
+            });
+        }
+
+
+        // setInterval(fetchCryptosCurrencies, 2000);
+
+    </script>
+</body>
+
+</html>
